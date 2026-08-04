@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BOOKS, TAGS, MONTHS, DAYS_FULL, buildRefLabel, fmtSz } from './data';
 
-export default function NoteForm({ noteKey, note, onSave, onDelete, onBack }) {
+export default function NoteForm({ noteKey, note, onSave, onDelete, onBack, isDesktop }) {
   const [book, setBook] = useState(note?.book || '');
   const [chapter, setChapter] = useState(note?.chapter || '');
   const [verse, setVerse] = useState(note?.verse || '');
@@ -35,7 +35,7 @@ export default function NoteForm({ noteKey, note, onSave, onDelete, onBack }) {
   }
 
   return (
-    <div style={{padding:'16px 16px 100px', maxWidth:700, margin:'0 auto'}}>
+    <div style={{padding: isDesktop ? '28px 32px 40px' : '16px 16px 100px', maxWidth:700, margin:'0 auto'}}>
       {/* Back */}
       <button onClick={onBack} style={{
         background:'none',border:'1px solid var(--border)',borderRadius:4,

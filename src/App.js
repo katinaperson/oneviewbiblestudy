@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './Header';
+import DesktopHeader from './DesktopHeader';
+import DesktopSidebar from './DesktopSidebar';
 import BottomNav from './BottomNav';
 import ReadingPlan from './ReadingPlan';
 import NotesList from './NotesList';
@@ -8,20 +10,26 @@ import Search from './Search';
 import { useStore } from './useStore';
 import { midnight, dk } from './data';
 
+const DESKTOP_BREAKPOINT = 768;
+
 export default function App() {
   const { store, saveNote, deleteNote, savePlan, setCheck, resetChecks, replaceAll } = useStore();
   const [activeTab, setActiveTab] = useState('plan');
-  const [noteKey, setNoteKey] = useState(null); // null = list, string = form
+  const [noteKey, setNoteKey] = useState(null);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= DESKTOP_BREAKPOINT);
 
-  // Open a note by date key (from calendar, plan, or list)
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   function openNote(key) {
     setNoteKey(key);
     setActiveTab('notes');
   }
 
-  // Open note from plan with planReading pre-filled
   function openNoteFromPlan(dateStr, reading) {
-    // Ensure planReading is stored if note doesn't exist yet
     if (!store.notes[dateStr]) {
       saveNote(dateStr, { planReading: reading, book:'', chapter:'', verse:'', text:'', tags:[], attachments:[] });
     }
@@ -44,14 +52,12 @@ export default function App() {
     setNoteKey(null);
   }
 
-  // Export
   function handleExport() {
     const b = new Blob([JSON.stringify(store,null,2)],{type:'application/json'});
     const a = document.createElement('a'); a.href=URL.createObjectURL(b);
     a.download=`oneview-bible-study-${new Date().toISOString().split('T')[0]}.json`; a.click();
   }
 
-  // Import
   function handleImport(e) {
     const f = e.target.files[0]; if(!f) return;
     const r = new FileReader();
@@ -62,46 +68,76 @@ export default function App() {
     r.readAsText(f); e.target.value='';
   }
 
+  function handleTabChange(tab) {
+    setActiveTab(tab);
+    setNoteKey(null);
+  }
+
+  const notesContent = noteKey ? (
+    <NoteForm
+      noteKey={noteKey}
+      note={store.notes[noteKey]}
+      onSave={handleSaveNote}
+      onDelete={handleDeleteNote}
+      onBack={() => setNoteKey(null)}
+      isDesktop={isDesktop}
+    />
+  ) : (
+    <NotesList
+      store={store}
+      onOpenNote={openNote}
+      onNewNote={openNewNote}
+      isDesktop={isDesktop}
+    />
+  );
+
+  if (isDesktop) {
+    return (
+      <div style={{
+        display: 'flex', height: '100vh', overflow: 'hidden',
+        background: 'var(--bg)', fontFamily: "'Jost', sans-serif"
+      }}>
+        <DesktopSidebar active={activeTab} onChange={handleTabChange} />
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <DesktopHeader onExport={handleExport} onImport={handleImport} />
+
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {activeTab === 'plan' && (
+              <ReadingPlan
+                store={store} savePlan={savePlan} setCheck={setCheck}
+                resetChecks={resetChecks} onOpenNote={openNoteFromPlan}
+                isDesktop={isDesktop}
+              />
+            )}
+            {activeTab === 'notes' && notesContent}
+            {activeTab === 'search' && (
+              <Search store={store} onOpenNote={openNote} isDesktop={isDesktop} />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Mobile layout
   return (
-    <div style={{minHeight:'100vh',background:'var(--bg)',paddingBottom:64}}>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', paddingBottom:64 }}>
       <Header onExport={handleExport} onImport={handleImport} />
 
-      {/* PLAN TAB */}
-      {activeTab==='plan' && (
+      {activeTab === 'plan' && (
         <ReadingPlan
-          store={store}
-          savePlan={savePlan}
-          setCheck={setCheck}
-          resetChecks={resetChecks}
-          onOpenNote={openNoteFromPlan}
+          store={store} savePlan={savePlan} setCheck={setCheck}
+          resetChecks={resetChecks} onOpenNote={openNoteFromPlan}
+          isDesktop={false}
         />
       )}
-
-      {/* NOTES TAB */}
-      {activeTab==='notes' && (
-        noteKey ? (
-          <NoteForm
-            noteKey={noteKey}
-            note={store.notes[noteKey]}
-            onSave={handleSaveNote}
-            onDelete={handleDeleteNote}
-            onBack={()=>setNoteKey(null)}
-          />
-        ) : (
-          <NotesList
-            store={store}
-            onOpenNote={openNote}
-            onNewNote={openNewNote}
-          />
-        )
+      {activeTab === 'notes' && notesContent}
+      {activeTab === 'search' && (
+        <Search store={store} onOpenNote={openNote} isDesktop={false} />
       )}
 
-      {/* SEARCH TAB */}
-      {activeTab==='search' && (
-        <Search store={store} onOpenNote={openNote} />
-      )}
-
-      <BottomNav active={activeTab} onChange={tab=>{setActiveTab(tab);setNoteKey(null);}} />
+      <BottomNav active={activeTab} onChange={handleTabChange} />
     </div>
   );
 }

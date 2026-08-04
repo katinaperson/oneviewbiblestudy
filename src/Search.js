@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MONTHS, buildRefLabel } from './data';
 
-export default function Search({ store, onOpenNote }) {
+export default function Search({ store, onOpenNote, isDesktop }) {
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();
@@ -21,7 +21,7 @@ export default function Search({ store, onOpenNote }) {
   }
 
   return (
-    <div style={{padding:'20px 16px 100px', maxWidth:700, margin:'0 auto'}}>
+    <div style={{padding: isDesktop ? '28px 32px 40px' : '20px 16px 100px', maxWidth:700, margin:'0 auto'}}>
       <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.55rem',fontWeight:400,color:'var(--ink)',marginBottom:16}}>
         Search <em style={{fontStyle:'italic',color:'var(--rose)'}}>Notes</em>
       </h2>
