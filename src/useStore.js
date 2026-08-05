@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'ovbs-v1';
+const STORAGE_KEY = 'ssbn-v1';
+const UNLOCK_KEY = 'ssbn-unlocked';
 
 function loadFromStorage() {
   try {
@@ -10,16 +11,20 @@ function loadFromStorage() {
   return { notes: {}, plan: null, checks: {} };
 }
 
-function saveToStorage(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
-}
-
-// NOTE: This hook is structured so that `notes`, `plan`, and `checks`
-// can be swapped to Supabase calls in a future sync upgrade with minimal refactoring.
 export function useStore() {
   const [store, setStore] = useState(loadFromStorage);
+  const [unlocked, setUnlocked] = useState(() => {
+    return localStorage.getItem(UNLOCK_KEY) === 'true';
+  });
 
-  useEffect(() => { saveToStorage(store); }, [store]);
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch(e) {}
+  }, [store]);
+
+  const unlock = useCallback(() => {
+    localStorage.setItem(UNLOCK_KEY, 'true');
+    setUnlocked(true);
+  }, []);
 
   const saveNote = useCallback((key, note) => {
     setStore(s => ({ ...s, notes: { ...s.notes, [key]: { ...note, updated: new Date().toISOString() } } }));
@@ -45,5 +50,5 @@ export function useStore() {
     setStore(newStore);
   }, []);
 
-  return { store, saveNote, deleteNote, savePlan, setCheck, resetChecks, replaceAll };
+  return { store, unlocked, unlock, saveNote, deleteNote, savePlan, setCheck, resetChecks, replaceAll };
 }
