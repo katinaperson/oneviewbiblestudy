@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/oneviewbiblestudy/static/css/main.e7af0efc.css",
-    "main.js": "/oneviewbiblestudy/static/js/main.a58e5168.js",
+    "main.js": "/oneviewbiblestudy/static/js/main.9ae70afc.js",
     "static/js/453.9788291a.chunk.js": "/oneviewbiblestudy/static/js/453.9788291a.chunk.js",
     "index.html": "/oneviewbiblestudy/index.html",
     "main.e7af0efc.css.map": "/oneviewbiblestudy/static/css/main.e7af0efc.css.map",
-    "main.a58e5168.js.map": "/oneviewbiblestudy/static/js/main.a58e5168.js.map",
+    "main.9ae70afc.js.map": "/oneviewbiblestudy/static/js/main.9ae70afc.js.map",
     "453.9788291a.chunk.js.map": "/oneviewbiblestudy/static/js/453.9788291a.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e7af0efc.css",
-    "static/js/main.a58e5168.js"
+    "static/js/main.9ae70afc.js"
   ]
 }
