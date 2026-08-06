@@ -25,25 +25,41 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
     }
   }, []);
 
-  // Use onMouseDown + preventDefault to preserve text selection
-  function handleFormat(e, cmd, val = null) {
-    e.preventDefault(); // keeps selection alive
-    editorRef.current.focus();
-    document.execCommand(cmd, false, val);
-    onChange(editorRef.current.innerHTML);
+  function applyFormat(e, cmd, val = null) {
+    e.preventDefault();
+    const editor = editorRef.current;
+    editor.focus();
+    
+    // Save and restore selection
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
+    
+    if (cmd === 'bold') {
+      // Manual bold using surroundContents
+      const selectedText = range.toString();
+      if (!selectedText) return;
+      
+      // Check if already bold
+      const parentNode = range.commonAncestorContainer.parentNode;
+      if (parentNode && (parentNode.tagName === 'B' || parentNode.tagName === 'STRONG' || parentNode.style?.fontWeight === 'bold' || parentNode.style?.fontWeight === '700')) {
+        // Unbold - unwrap
+        document.execCommand('bold', false, null);
+      } else {
+        document.execCommand('bold', false, null);
+      }
+    } else {
+      document.execCommand(cmd, false, val);
+    }
+    
+    onChange(editor.innerHTML);
   }
 
   function handleHighlight(e, color) {
     e.preventDefault();
     editorRef.current.focus();
     document.execCommand('hiliteColor', false, color);
-    onChange(editorRef.current.innerHTML);
-  }
-
-  function handleFont(e, fontFamily) {
-    e.preventDefault();
-    editorRef.current.focus();
-    document.execCommand('fontName', false, fontFamily);
     onChange(editorRef.current.innerHTML);
   }
 
@@ -57,7 +73,13 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
     if (e.key === 'Backspace') {
       e.stopPropagation();
     }
-  }, []);
+    // Keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'b') { e.preventDefault(); document.execCommand('bold', false, null); onChange(editorRef.current.innerHTML); }
+      if (e.key === 'i') { e.preventDefault(); document.execCommand('italic', false, null); onChange(editorRef.current.innerHTML); }
+      if (e.key === 'u') { e.preventDefault(); document.execCommand('underline', false, null); onChange(editorRef.current.innerHTML); }
+    }
+  }, [onChange]);
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--bg)' }}>
@@ -67,45 +89,33 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
         background: 'var(--white)', borderBottom: '1px solid var(--border)',
         flexWrap: 'wrap'
       }}>
-        {/* Bold Italic Underline */}
         <div style={{ display: 'flex', gap: 2, marginRight: 8 }}>
-          <ToolBtn onMouseDown={e => handleFormat(e, 'bold')} title="Bold"><strong>B</strong></ToolBtn>
-          <ToolBtn onMouseDown={e => handleFormat(e, 'italic')} title="Italic"><em>I</em></ToolBtn>
-          <ToolBtn onMouseDown={e => handleFormat(e, 'underline')} title="Underline"><u>U</u></ToolBtn>
+          <ToolBtn onMouseDown={e => applyFormat(e, 'bold')} title="Bold (Ctrl+B)"><strong>B</strong></ToolBtn>
+          <ToolBtn onMouseDown={e => applyFormat(e, 'italic')} title="Italic (Ctrl+I)"><em>I</em></ToolBtn>
+          <ToolBtn onMouseDown={e => applyFormat(e, 'underline')} title="Underline (Ctrl+U)"><u>U</u></ToolBtn>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'var(--border)', marginRight: 8 }}/>
 
-        {/* Highlight colors */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginRight: 8 }}>
           <span style={{ fontSize: '0.58rem', color: 'var(--ink-lt)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Highlight</span>
           {HIGHLIGHT_COLORS.map(h => (
-            <button
-              key={h.name}
-              onMouseDown={e => handleHighlight(e, h.color)}
-              title={h.label}
-              style={{
-                width: 18, height: 18, borderRadius: '50%',
-                background: h.color, border: '1.5px solid var(--border)',
-                cursor: 'pointer', flexShrink: 0
-              }}
-            />
-          ))}
-          <button
-            onMouseDown={e => handleHighlight(e, 'transparent')}
-            title="Remove highlight"
-            style={{
+            <button key={h.name} onMouseDown={e => handleHighlight(e, h.color)} title={h.label} style={{
               width: 18, height: 18, borderRadius: '50%',
-              background: 'white', border: '1.5px solid var(--border)',
-              cursor: 'pointer', fontSize: '0.6rem', display: 'flex',
-              alignItems: 'center', justifyContent: 'center', color: 'var(--ink-lt)'
-            }}
-          >✕</button>
+              background: h.color, border: '1.5px solid var(--border)',
+              cursor: 'pointer', flexShrink: 0
+            }}/>
+          ))}
+          <button onMouseDown={e => handleHighlight(e, 'transparent')} title="Remove highlight" style={{
+            width: 18, height: 18, borderRadius: '50%',
+            background: 'white', border: '1.5px solid var(--border)',
+            cursor: 'pointer', fontSize: '0.6rem', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', color: 'var(--ink-lt)'
+          }}>✕</button>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'var(--border)', marginRight: 8 }}/>
 
-        {/* Font selector */}
         <select
           onMouseDown={e => e.stopPropagation()}
           onChange={e => {
@@ -121,23 +131,17 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
           }}
         >
           <option value="" disabled>Font</option>
-          {FONTS.map(f => (
-            <option key={f.value} value={f.value}>{f.label}</option>
-          ))}
+          {FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
 
-        {/* Clear formatting */}
-        <button
-          onMouseDown={e => handleFormat(e, 'removeFormat')}
-          style={{
-            background: 'none', border: '1px solid var(--border)', borderRadius: 4,
-            padding: '3px 8px', fontSize: '0.62rem', color: 'var(--ink-lt)',
-            cursor: 'pointer', marginLeft: 4, fontFamily: "'Jost', sans-serif"
-          }}
-        >Clear</button>
+        <button onMouseDown={e => applyFormat(e, 'removeFormat')} style={{
+          background: 'none', border: '1px solid var(--border)', borderRadius: 4,
+          padding: '3px 8px', fontSize: '0.62rem', color: 'var(--ink-lt)',
+          cursor: 'pointer', marginLeft: 4, fontFamily: "'Jost', sans-serif"
+        }}>Clear</button>
       </div>
 
-      {/* Editor area */}
+      {/* Editor */}
       <div
         ref={editorRef}
         contentEditable
@@ -175,15 +179,11 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
 
 function ToolBtn({ onMouseDown, children, title }) {
   return (
-    <button
-      onMouseDown={onMouseDown}
-      title={title}
-      style={{
-        width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 4,
-        background: 'var(--bg)', cursor: 'pointer', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem',
-        color: 'var(--ink)', transition: 'all 0.15s', fontFamily: "'Jost', sans-serif"
-      }}
-    >{children}</button>
+    <button onMouseDown={onMouseDown} title={title} style={{
+      width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 4,
+      background: 'var(--bg)', cursor: 'pointer', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem',
+      color: 'var(--ink)', transition: 'all 0.15s', fontFamily: "'Jost', sans-serif"
+    }}>{children}</button>
   );
 }
