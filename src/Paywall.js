@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const UNLOCK_CODE = 'ONEVIEW2025';
+const UNLOCK_CODE = 'ONEVIEW2026';
 const GUMROAD_LINK = 'https://gumroad.com'; // Update with real link when ready
 
 export default function Paywall({ onUnlock }) {
