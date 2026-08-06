@@ -15,6 +15,47 @@ const FONTS = [
   { label: 'Modern', value: "'Arial', sans-serif" },
 ];
 
+function isFormatActive(format) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return false;
+  
+  let node = selection.getRangeAt(0).commonAncestorContainer;
+  if (node.nodeType === 3) node = node.parentNode;
+  
+  while (node) {
+    const tag = node.tagName;
+    const style = node.style || {};
+    if (format === 'bold' && (tag === 'B' || tag === 'STRONG' || style.fontWeight === 'bold' || style.fontWeight === '700')) return true;
+    if (format === 'italic' && (tag === 'I' || tag === 'EM' || style.fontStyle === 'italic')) return true;
+    if (format === 'underline' && (tag === 'U' || style.textDecoration === 'underline')) return true;
+    if (node.contentEditable === 'true') break;
+    node = node.parentNode;
+  }
+  return false;
+}
+
+function applyInlineFormat(tag, editorRef, onChange) {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+  
+  const range = selection.getRangeAt(0);
+  
+  if (isFormatActive(tag === 'strong' ? 'bold' : tag === 'em' ? 'italic' : 'underline')) {
+    // Remove format
+    document.execCommand(tag === 'strong' ? 'bold' : tag === 'em' ? 'italic' : 'underline', false, null);
+  } else {
+    // Apply format
+    const el = document.createElement(tag);
+    try {
+      range.surroundContents(el);
+    } catch(e) {
+      // If surroundContents fails (partial selection across nodes), use execCommand
+      document.execCommand(tag === 'strong' ? 'bold' : tag === 'em' ? 'italic' : 'underline', false, null);
+    }
+  }
+  onChange(editorRef.current.innerHTML);
+}
+
 export default function RichTextEditor({ value, onChange, placeholder }) {
   const editorRef = useRef(null);
   const isComposing = useRef(false);
@@ -25,37 +66,6 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
     }
   }, []);
 
-  function applyFormat(e, cmd, val = null) {
-    e.preventDefault();
-    const editor = editorRef.current;
-    editor.focus();
-    
-    // Save and restore selection
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    
-    if (cmd === 'bold') {
-      // Manual bold using surroundContents
-      const selectedText = range.toString();
-      if (!selectedText) return;
-      
-      // Check if already bold
-      const parentNode = range.commonAncestorContainer.parentNode;
-      if (parentNode && (parentNode.tagName === 'B' || parentNode.tagName === 'STRONG' || parentNode.style?.fontWeight === 'bold' || parentNode.style?.fontWeight === '700')) {
-        // Unbold - unwrap
-        document.execCommand('bold', false, null);
-      } else {
-        document.execCommand('bold', false, null);
-      }
-    } else {
-      document.execCommand(cmd, false, val);
-    }
-    
-    onChange(editor.innerHTML);
-  }
-
   function handleHighlight(e, color) {
     e.preventDefault();
     editorRef.current.focus();
@@ -64,35 +74,28 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   }
 
   const handleInput = useCallback(() => {
-    if (!isComposing.current) {
-      onChange(editorRef.current.innerHTML);
-    }
+    if (!isComposing.current) onChange(editorRef.current.innerHTML);
   }, [onChange]);
 
   const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Backspace') {
-      e.stopPropagation();
-    }
-    // Keyboard shortcuts
+    if (e.key === 'Backspace') e.stopPropagation();
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'b') { e.preventDefault(); document.execCommand('bold', false, null); onChange(editorRef.current.innerHTML); }
-      if (e.key === 'i') { e.preventDefault(); document.execCommand('italic', false, null); onChange(editorRef.current.innerHTML); }
-      if (e.key === 'u') { e.preventDefault(); document.execCommand('underline', false, null); onChange(editorRef.current.innerHTML); }
+      if (e.key === 'b') { e.preventDefault(); applyInlineFormat('strong', editorRef, onChange); }
+      if (e.key === 'i') { e.preventDefault(); applyInlineFormat('em', editorRef, onChange); }
+      if (e.key === 'u') { e.preventDefault(); applyInlineFormat('u', editorRef, onChange); }
     }
   }, [onChange]);
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--bg)' }}>
-      {/* Toolbar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 2, padding: '8px 12px',
-        background: 'var(--white)', borderBottom: '1px solid var(--border)',
-        flexWrap: 'wrap'
+        background: 'var(--white)', borderBottom: '1px solid var(--border)', flexWrap: 'wrap'
       }}>
         <div style={{ display: 'flex', gap: 2, marginRight: 8 }}>
-          <ToolBtn onMouseDown={e => applyFormat(e, 'bold')} title="Bold (Ctrl+B)"><strong>B</strong></ToolBtn>
-          <ToolBtn onMouseDown={e => applyFormat(e, 'italic')} title="Italic (Ctrl+I)"><em>I</em></ToolBtn>
-          <ToolBtn onMouseDown={e => applyFormat(e, 'underline')} title="Underline (Ctrl+U)"><u>U</u></ToolBtn>
+          <ToolBtn onMouseDown={e => { e.preventDefault(); applyInlineFormat('strong', editorRef, onChange); }} title="Bold (Ctrl+B)"><strong>B</strong></ToolBtn>
+          <ToolBtn onMouseDown={e => { e.preventDefault(); applyInlineFormat('em', editorRef, onChange); }} title="Italic (Ctrl+I)"><em>I</em></ToolBtn>
+          <ToolBtn onMouseDown={e => { e.preventDefault(); applyInlineFormat('u', editorRef, onChange); }} title="Underline (Ctrl+U)"><u>U</u></ToolBtn>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'var(--border)', marginRight: 8 }}/>
@@ -101,71 +104,47 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
           <span style={{ fontSize: '0.58rem', color: 'var(--ink-lt)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Highlight</span>
           {HIGHLIGHT_COLORS.map(h => (
             <button key={h.name} onMouseDown={e => handleHighlight(e, h.color)} title={h.label} style={{
-              width: 18, height: 18, borderRadius: '50%',
-              background: h.color, border: '1.5px solid var(--border)',
-              cursor: 'pointer', flexShrink: 0
+              width: 18, height: 18, borderRadius: '50%', background: h.color,
+              border: '1.5px solid var(--border)', cursor: 'pointer', flexShrink: 0
             }}/>
           ))}
           <button onMouseDown={e => handleHighlight(e, 'transparent')} title="Remove highlight" style={{
-            width: 18, height: 18, borderRadius: '50%',
-            background: 'white', border: '1.5px solid var(--border)',
-            cursor: 'pointer', fontSize: '0.6rem', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', color: 'var(--ink-lt)'
+            width: 18, height: 18, borderRadius: '50%', background: 'white',
+            border: '1.5px solid var(--border)', cursor: 'pointer', fontSize: '0.6rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-lt)'
           }}>✕</button>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'var(--border)', marginRight: 8 }}/>
 
-        <select
-          onMouseDown={e => e.stopPropagation()}
-          onChange={e => {
-            editorRef.current.focus();
-            document.execCommand('fontName', false, e.target.value);
-            onChange(editorRef.current.innerHTML);
-          }}
+        <select onMouseDown={e => e.stopPropagation()}
+          onChange={e => { editorRef.current.focus(); document.execCommand('fontName', false, e.target.value); onChange(editorRef.current.innerHTML); }}
           defaultValue=""
-          style={{
-            fontSize: '0.7rem', padding: '3px 6px', border: '1px solid var(--border)',
-            borderRadius: 4, background: 'var(--bg)', color: 'var(--ink)',
-            cursor: 'pointer', outline: 'none', fontFamily: "'Jost', sans-serif"
-          }}
-        >
+          style={{ fontSize: '0.7rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--ink)', cursor: 'pointer', outline: 'none', fontFamily: "'Jost', sans-serif" }}>
           <option value="" disabled>Font</option>
           {FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
         </select>
 
-        <button onMouseDown={e => applyFormat(e, 'removeFormat')} style={{
-          background: 'none', border: '1px solid var(--border)', borderRadius: 4,
-          padding: '3px 8px', fontSize: '0.62rem', color: 'var(--ink-lt)',
-          cursor: 'pointer', marginLeft: 4, fontFamily: "'Jost', sans-serif"
-        }}>Clear</button>
+        <button onMouseDown={e => { e.preventDefault(); editorRef.current.focus(); document.execCommand('removeFormat', false, null); onChange(editorRef.current.innerHTML); }}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '3px 8px', fontSize: '0.62rem', color: 'var(--ink-lt)', cursor: 'pointer', marginLeft: 4, fontFamily: "'Jost', sans-serif" }}>
+          Clear
+        </button>
       </div>
 
-      {/* Editor */}
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
+      <div ref={editorRef} contentEditable suppressContentEditableWarning
+        onInput={handleInput} onKeyDown={handleKeyDown}
         onCompositionStart={() => { isComposing.current = true; }}
         onCompositionEnd={() => { isComposing.current = false; onChange(editorRef.current.innerHTML); }}
-        data-placeholder={placeholder}
-        dir="ltr"
+        data-placeholder={placeholder} dir="ltr"
         style={{
-          minHeight: 220, padding: '14px 16px',
-          fontSize: '0.87rem', fontWeight: 300, color: 'var(--ink)',
-          lineHeight: 1.85, outline: 'none', background: 'var(--bg)',
-          fontFamily: "'Jost', sans-serif", direction: 'ltr',
-          textAlign: 'left', wordBreak: 'break-word', overflowWrap: 'break-word',
+          minHeight: 220, padding: '14px 16px', fontSize: '0.87rem', fontWeight: 300,
+          color: 'var(--ink)', lineHeight: 1.85, outline: 'none', background: 'var(--bg)',
+          fontFamily: "'Jost', sans-serif", direction: 'ltr', textAlign: 'left',
+          wordBreak: 'break-word', overflowWrap: 'break-word',
         }}
       />
 
-      {/* Color legend */}
-      <div style={{
-        padding: '8px 12px', borderTop: '1px solid var(--border)',
-        background: 'var(--white)', display: 'flex', gap: 12, flexWrap: 'wrap'
-      }}>
+      <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', background: 'var(--white)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {HIGHLIGHT_COLORS.map(h => (
           <div key={h.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: h.color, border: '1px solid var(--border)' }}/>
@@ -181,9 +160,9 @@ function ToolBtn({ onMouseDown, children, title }) {
   return (
     <button onMouseDown={onMouseDown} title={title} style={{
       width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 4,
-      background: 'var(--bg)', cursor: 'pointer', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem',
-      color: 'var(--ink)', transition: 'all 0.15s', fontFamily: "'Jost', sans-serif"
+      background: 'var(--bg)', cursor: 'pointer', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', fontSize: '0.82rem', color: 'var(--ink)',
+      transition: 'all 0.15s', fontFamily: "'Jost', sans-serif"
     }}>{children}</button>
   );
 }
