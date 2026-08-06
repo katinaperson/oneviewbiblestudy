@@ -19,26 +19,29 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   const editorRef = useRef(null);
   const isComposing = useRef(false);
 
-  // Set initial content only once
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
       editorRef.current.innerHTML = value || '';
     }
   }, []);
 
-  function execCmd(cmd, val = null) {
+  // Use onMouseDown + preventDefault to preserve text selection
+  function handleFormat(e, cmd, val = null) {
+    e.preventDefault(); // keeps selection alive
     editorRef.current.focus();
     document.execCommand(cmd, false, val);
     onChange(editorRef.current.innerHTML);
   }
 
-  function highlight(color) {
+  function handleHighlight(e, color) {
+    e.preventDefault();
     editorRef.current.focus();
     document.execCommand('hiliteColor', false, color);
     onChange(editorRef.current.innerHTML);
   }
 
-  function setFont(fontFamily) {
+  function handleFont(e, fontFamily) {
+    e.preventDefault();
     editorRef.current.focus();
     document.execCommand('fontName', false, fontFamily);
     onChange(editorRef.current.innerHTML);
@@ -51,17 +54,10 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   }, [onChange]);
 
   const handleKeyDown = useCallback((e) => {
-    // Prevent backspace from navigating away on tablet/mobile
     if (e.key === 'Backspace') {
       e.stopPropagation();
     }
   }, []);
-
-  const handleCompositionStart = () => { isComposing.current = true; };
-  const handleCompositionEnd = () => {
-    isComposing.current = false;
-    onChange(editorRef.current.innerHTML);
-  };
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--bg)' }}>
@@ -71,78 +67,93 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
         background: 'var(--white)', borderBottom: '1px solid var(--border)',
         flexWrap: 'wrap'
       }}>
+        {/* Bold Italic Underline */}
         <div style={{ display: 'flex', gap: 2, marginRight: 8 }}>
-          <ToolBtn onClick={() => execCmd('bold')} title="Bold"><strong>B</strong></ToolBtn>
-          <ToolBtn onClick={() => execCmd('italic')} title="Italic"><em>I</em></ToolBtn>
-          <ToolBtn onClick={() => execCmd('underline')} title="Underline"><u>U</u></ToolBtn>
+          <ToolBtn onMouseDown={e => handleFormat(e, 'bold')} title="Bold"><strong>B</strong></ToolBtn>
+          <ToolBtn onMouseDown={e => handleFormat(e, 'italic')} title="Italic"><em>I</em></ToolBtn>
+          <ToolBtn onMouseDown={e => handleFormat(e, 'underline')} title="Underline"><u>U</u></ToolBtn>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'var(--border)', marginRight: 8 }}/>
 
+        {/* Highlight colors */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginRight: 8 }}>
           <span style={{ fontSize: '0.58rem', color: 'var(--ink-lt)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Highlight</span>
           {HIGHLIGHT_COLORS.map(h => (
-            <button key={h.name} onClick={() => highlight(h.color)} title={h.label} style={{
-              width: 18, height: 18, borderRadius: '50%',
-              background: h.color, border: '1.5px solid var(--border)',
-              cursor: 'pointer', flexShrink: 0
-            }}/>
+            <button
+              key={h.name}
+              onMouseDown={e => handleHighlight(e, h.color)}
+              title={h.label}
+              style={{
+                width: 18, height: 18, borderRadius: '50%',
+                background: h.color, border: '1.5px solid var(--border)',
+                cursor: 'pointer', flexShrink: 0
+              }}
+            />
           ))}
-          <button onClick={() => highlight('transparent')} title="Remove highlight" style={{
-            width: 18, height: 18, borderRadius: '50%',
-            background: 'white', border: '1.5px solid var(--border)',
-            cursor: 'pointer', fontSize: '0.6rem', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', color: 'var(--ink-lt)'
-          }}>✕</button>
+          <button
+            onMouseDown={e => handleHighlight(e, 'transparent')}
+            title="Remove highlight"
+            style={{
+              width: 18, height: 18, borderRadius: '50%',
+              background: 'white', border: '1.5px solid var(--border)',
+              cursor: 'pointer', fontSize: '0.6rem', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', color: 'var(--ink-lt)'
+            }}
+          >✕</button>
         </div>
 
         <div style={{ width: 1, height: 20, background: 'var(--border)', marginRight: 8 }}/>
 
-        <select onChange={e => setFont(e.target.value)} defaultValue="" style={{
-          fontSize: '0.7rem', padding: '3px 6px', border: '1px solid var(--border)',
-          borderRadius: 4, background: 'var(--bg)', color: 'var(--ink)',
-          cursor: 'pointer', outline: 'none', fontFamily: "'Jost', sans-serif"
-        }}>
+        {/* Font selector */}
+        <select
+          onMouseDown={e => e.stopPropagation()}
+          onChange={e => {
+            editorRef.current.focus();
+            document.execCommand('fontName', false, e.target.value);
+            onChange(editorRef.current.innerHTML);
+          }}
+          defaultValue=""
+          style={{
+            fontSize: '0.7rem', padding: '3px 6px', border: '1px solid var(--border)',
+            borderRadius: 4, background: 'var(--bg)', color: 'var(--ink)',
+            cursor: 'pointer', outline: 'none', fontFamily: "'Jost', sans-serif"
+          }}
+        >
           <option value="" disabled>Font</option>
           {FONTS.map(f => (
-            <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+            <option key={f.value} value={f.value}>{f.label}</option>
           ))}
         </select>
 
-        <button onClick={() => execCmd('removeFormat')} style={{
-          background: 'none', border: '1px solid var(--border)', borderRadius: 4,
-          padding: '3px 8px', fontSize: '0.62rem', color: 'var(--ink-lt)',
-          cursor: 'pointer', marginLeft: 4, fontFamily: "'Jost', sans-serif"
-        }}>Clear</button>
+        {/* Clear formatting */}
+        <button
+          onMouseDown={e => handleFormat(e, 'removeFormat')}
+          style={{
+            background: 'none', border: '1px solid var(--border)', borderRadius: 4,
+            padding: '3px 8px', fontSize: '0.62rem', color: 'var(--ink-lt)',
+            cursor: 'pointer', marginLeft: 4, fontFamily: "'Jost', sans-serif"
+          }}
+        >Clear</button>
       </div>
 
-      {/* Editor */}
+      {/* Editor area */}
       <div
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
         onInput={handleInput}
         onKeyDown={handleKeyDown}
-        onCompositionStart={handleCompositionStart}
-        onCompositionEnd={handleCompositionEnd}
+        onCompositionStart={() => { isComposing.current = true; }}
+        onCompositionEnd={() => { isComposing.current = false; onChange(editorRef.current.innerHTML); }}
         data-placeholder={placeholder}
         dir="ltr"
         style={{
-          minHeight: 220,
-          padding: '14px 16px',
-          fontSize: '0.87rem',
-          fontWeight: 300,
-          color: 'var(--ink)',
-          lineHeight: 1.85,
-          outline: 'none',
-          background: 'var(--bg)',
-          fontFamily: "'Jost', sans-serif",
-          direction: 'ltr',
-          unicodeBidi: 'plaintext',
-          textAlign: 'left',
-          wordBreak: 'break-word',
-          overflowWrap: 'break-word',
-          WebkitUserModify: 'read-write-plaintext-only',
+          minHeight: 220, padding: '14px 16px',
+          fontSize: '0.87rem', fontWeight: 300, color: 'var(--ink)',
+          lineHeight: 1.85, outline: 'none', background: 'var(--bg)',
+          fontFamily: "'Jost', sans-serif", direction: 'ltr',
+          textAlign: 'left', wordBreak: 'break-word', overflowWrap: 'break-word',
         }}
       />
 
@@ -162,13 +173,17 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   );
 }
 
-function ToolBtn({ onClick, children, title }) {
+function ToolBtn({ onMouseDown, children, title }) {
   return (
-    <button onClick={onClick} title={title} style={{
-      width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 4,
-      background: 'var(--bg)', cursor: 'pointer', display: 'flex',
-      alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem',
-      color: 'var(--ink)', transition: 'all 0.15s', fontFamily: "'Jost', sans-serif"
-    }}>{children}</button>
+    <button
+      onMouseDown={onMouseDown}
+      title={title}
+      style={{
+        width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 4,
+        background: 'var(--bg)', cursor: 'pointer', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', fontSize: '0.82rem',
+        color: 'var(--ink)', transition: 'all 0.15s', fontFamily: "'Jost', sans-serif"
+      }}
+    >{children}</button>
   );
 }
