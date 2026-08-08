@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const UNLOCK_CODE = 'ONEVIEW2026';
-const GUMROAD_LINK = 'https://gumroad.com'; // Update with real link when ready
+const PAYHIP_LINK = 'https://payhip.com/oneviewstudio'; // Update with real link when ready
 
 export default function Paywall({ onUnlock }) {
   const [code, setCode] = useState('');
@@ -75,13 +75,13 @@ export default function Paywall({ onUnlock }) {
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 6, textAlign: 'center' }}>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', color: 'var(--rose)', marginBottom: 2 }}>$19</div>
           <div style={{ fontSize: '0.7rem', color: 'var(--ink-lt)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>One-time purchase · Yours forever</div>
-          <a href={GUMROAD_LINK} target="_blank" rel="noopener noreferrer" style={{
+          <a href={PAYHIP_LINK} target="_blank" rel="noopener noreferrer" style={{
             display: 'block', width: '100%', padding: '13px',
             background: 'var(--rose)', color: 'white', border: 'none', borderRadius: 4,
             fontFamily: "'Cormorant Garamond', serif", fontSize: '1.1rem', fontStyle: 'italic',
             cursor: 'pointer', textDecoration: 'none', textAlign: 'center', marginBottom: 8
           }}>
-            ✦ Purchase on Gumroad
+            ✦ Purchase on Payhip
           </a>
           <div style={{ fontSize: '0.65rem', color: 'var(--ink-lt)' }}>
             After purchase you'll receive an unlock code by email
