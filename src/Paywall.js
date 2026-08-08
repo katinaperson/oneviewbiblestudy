@@ -73,7 +73,7 @@ export default function Paywall({ onUnlock }) {
         ))}
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 6, textAlign: 'center' }}>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', color: 'var(--rose)', marginBottom: 2 }}>$19.99</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: '2rem', color: 'var(--rose)', marginBottom: 2 }}>$19</div>
           <div style={{ fontSize: '0.7rem', color: 'var(--ink-lt)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>One-time purchase · Yours forever</div>
           <a href={GUMROAD_LINK} target="_blank" rel="noopener noreferrer" style={{
             display: 'block', width: '100%', padding: '13px',
